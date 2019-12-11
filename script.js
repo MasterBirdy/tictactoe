@@ -5,6 +5,10 @@ const board = (() => {
      let turnsTaken = 0;
      const winnerLine = document.querySelector("h2");
 
+     let isItPlayersTurn = () => {
+          return isPlayersTurn;
+     }
+
      let boardState = (() => {
           let array = [];
           for (let i = 0; i < 3; i++) {
@@ -35,6 +39,10 @@ const board = (() => {
                for (let j = 0; j < 3; j++) {
                     boardState[i][j] = "";
                     document.querySelector('[data-row="' + j + '"][data-column="' + i + '"').textContent = "";
+                    isGameOver = false;
+                    turnsTaken = 0;
+                    isPlayersTurn = true;
+                    winnerLine.classList.add("hidden");
                }
           }
      }
@@ -60,21 +68,22 @@ const board = (() => {
                     let newBoard = JSON.parse(JSON.stringify(boardState));
                     newBoard[emptyMoves[i].column][emptyMoves[i].row] = symbol;
                     let newScore = minMax(emptyMoves[i].column, emptyMoves[i].row, newBoard, player.getSymbol());
-                    if (bestScore < newScore)
-                    {
+                    if (bestScore < newScore) {
                          bestScore = newScore;
                          index = i;
                     }
                }
           }
-          opponent.makeMove(emptyMoves[index].column, emptyMoves[index].row);
+          if (index !== -1) {
+               opponent.makeMove(emptyMoves[index].column, emptyMoves[index].row);
+          }
      }
 
      let minMax = (column, row, board, symbol) => {
-          let opponentSymbol = symbol === "X" ? "O" : "X"; 
+          let opponentSymbol = symbol === "X" ? "O" : "X";
           let isAWin = checkForWin(column, row, opponentSymbol, board);
           let wasComputersTurn = (opponent.getSymbol() === opponentSymbol);
-          let isPlayersTurn = (player.getSymbol() === symbol);
+          let isThePlayersTurn = (player.getSymbol() === symbol);
           let bestScore;
           if (isAWin && wasComputersTurn) {
                bestScore = 10;
@@ -83,25 +92,23 @@ const board = (() => {
           else if (isAWin) {
                bestScore = -10;
                return bestScore;
-               }
+          }
           let emptyArray = emptySpaces(board);
           if (emptyArray.length === 0) {
                return 0;
           }
           else {
                let newScore;
-               if (isPlayersTurn)
-               {
+               if (isThePlayersTurn) {
                     bestScore = 10000;
                }
-               else
-               {
+               else {
                     bestScore = -10000;
                }
                for (let i = 0; i < emptyArray.length; i++) {
                     let newBoard = JSON.parse(JSON.stringify(board));
                     newBoard[emptyArray[i].column][emptyArray[i].row] = symbol;
-                    if (isPlayersTurn) {
+                    if (isThePlayersTurn) {
                          newScore = minMax(emptyArray[i].column, emptyArray[i].row, newBoard, opponent.getSymbol());
                          if (bestScore > newScore) { //trying to find the min
                               bestScore = newScore;
@@ -117,7 +124,7 @@ const board = (() => {
                }
                return bestScore;
           }
-          
+
      }
 
      let checkForWin = (column, row, symbol, board) => {
@@ -137,7 +144,7 @@ const board = (() => {
                }
           }
 
-          if (!match && ((column === 0 && row === 0) || (row === 2 && column === 2))) {
+          if (!match && ((column === 0 && row === 0) || (row === 1 && column === 1) || (row === 2 && column === 2))) {
                match = true;
                for (let i = 0; i < 3; i++) {
                     if (board[i][i] !== symbol) {
@@ -146,7 +153,7 @@ const board = (() => {
                }
           }
 
-          if (!match && ((column === 2 && row === 0) || (row === 0 && column === 2))) {
+          if (!match && ((column === 2 && row === 0) || (row === 1 && column === 1) || (row === 2 && column === 0))) {
                match = true;
                for (let i = 0; i < 3; i++) {
                     if (board[i][2 - i] !== symbol) {
@@ -156,6 +163,11 @@ const board = (() => {
           }
 
           return match;
+     }
+
+     let CPUMakesAMove = () => {
+          bestMove(opponent.getSymbol());
+          isPlayersTurn = !isPlayersTurn;
      }
 
      let placePiece = (column, row, symbol) => {
@@ -169,15 +181,16 @@ const board = (() => {
                          isGameOver = true;
                     }
                     turnsTaken++;
-                    if (turnsTaken >= 9) {
+                    if (turnsTaken >= 9 && !isGameOver) {
                          winnerLine.textContent = "It's a tie...";
                          winnerLine.classList.remove("hidden");
                          isGameOver = true;
                     }
                }
           }
+          
      }
-     return { placePiece, clearBoard, isPlayersTurn };
+     return { placePiece, clearBoard, isItPlayersTurn, CPUMakesAMove };
 })();
 
 const PlayerFunction = (name, symbol) => {
@@ -193,4 +206,30 @@ const PlayerFunction = (name, symbol) => {
 
 const player = PlayerFunction("Bob", "X");
 const opponent = PlayerFunction("Steve", "O");
-opponent.isAComputer = true;
+
+document.querySelector('#inputtextone').addEventListener('input', function () {
+     document.querySelector('#playeroneid').textContent = this.value;
+});
+
+document.querySelector('#inputtexttwo').addEventListener('input', function () {
+     document.querySelector('#playertwoid').textContent = this.value;
+});
+
+document.querySelector("#restartbutton").addEventListener("click", function () {
+     board.clearBoard();
+})
+
+document.querySelector("#thecheckbox").addEventListener("change", function(){
+     if (this.checked)
+     {
+          opponent.isAComputer = true;
+          if(!board.isItPlayersTurn())
+          {
+               board.CPUMakesAMove();
+          }
+     }
+     else
+     {
+          opponent.isAComputer = false;
+     }
+});
